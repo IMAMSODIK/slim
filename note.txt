@@ -28,6 +28,24 @@ catatan:
 
 
 integrasi
+login member
+    1. pada file route.php tambahkan route berikut
+        $router->map('POST', '/auth/login', 'MemberController@login');
+        $router->map('POST', '/auth/logout', 'MemberController@logout');
+        $router->map('GET', '/auth/me', 'MemberController@me');
+
+    2. buat table baru untuk menyimpan token
+        CREATE TABLE member_tokens (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            member_id VARCHAR(20) NOT NULL,
+            token VARCHAR(255) NOT NULL,
+            expired_at DATETIME NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            INDEX idx_member_id (member_id),
+            INDEX idx_token (token)
+        );
+
 barcode member
     1. tambah kolom barcode_id pada table member didatabse
     2. dibawah baris 142, tambahkan kode

@@ -30,17 +30,17 @@ if (!defined('INDEX_AUTH')) {
 /* LOCAL DATABASE CONNECTION config */
 // database constant
 // change below setting according to your database configuration
-// define('DB_HOST', 'localhost');
-// define('DB_PORT', '3306');
-// define('DB_NAME', 'db_test');
-// define('DB_USERNAME', 'root');
-// define('DB_PASSWORD', '');
-
 define('DB_HOST', 'localhost');
 define('DB_PORT', '3306');
-define('DB_NAME', 'u654290532_slim');
-define('DB_USERNAME', 'u654290532_slim');
-define('DB_PASSWORD', '!+2mS7pQ8QuGfH4');
+define('DB_NAME', 'db_test');
+define('DB_USERNAME', 'root');
+define('DB_PASSWORD', '');
+
+// define('DB_HOST', 'localhost');
+// define('DB_PORT', '3306');
+// define('DB_NAME', 'u654290532_slim');
+// define('DB_USERNAME', 'u654290532_slim');
+// define('DB_PASSWORD', '!+2mS7pQ8QuGfH4');
 
 // define any other sysconfig variables below
 $sysconf['index']['type'] = 'index';
