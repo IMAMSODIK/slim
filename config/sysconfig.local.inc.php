@@ -36,10 +36,10 @@ if (!defined('INDEX_AUTH')) {
 // define('DB_USERNAME', 'root');
 // define('DB_PASSWORD', '');
 
-define('DB_HOST', 'u654290532_slim');
+define('DB_HOST', 'localhost');
 define('DB_PORT', '3306');
 define('DB_NAME', 'u654290532_slim');
-define('DB_USERNAME', 'root');
+define('DB_USERNAME', 'u654290532_slim');
 define('DB_PASSWORD', '!+2mS7pQ8QuGfH4');
 
 // define any other sysconfig variables below
