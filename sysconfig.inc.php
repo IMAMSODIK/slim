@@ -32,7 +32,7 @@ if (!defined('INDEX_AUTH')) {
  *
  * In production mode, the system error message will be disabled
  */
-define('ENVIRONMENT', 'production');
+define('ENVIRONMENT', 'development'); // value can be 'development' or 'production'
 
 switch (ENVIRONMENT) {
   case 'development':
