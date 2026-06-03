@@ -53,18 +53,21 @@ class BiblioController extends Controller
 
         // data
         $query = $dbs->query("
-        SELECT
-            biblio_id,
-            title,
-            isbn_issn,
-            publish_year,
-            image,
-            call_number
-        FROM biblio
-        ORDER BY biblio_id DESC
-        LIMIT {$limit}
-        OFFSET {$offset}
-    ");
+    SELECT
+        b.biblio_id,
+        b.title,
+        b.isbn_issn,
+        b.publish_year,
+        b.image,
+        b.call_number,
+        p.publisher_name AS publisher
+    FROM biblio b
+    LEFT JOIN mst_publisher p
+        ON b.publisher_id = p.publisher_id
+    ORDER BY b.biblio_id DESC
+    LIMIT {$limit}
+    OFFSET {$offset}
+");
 
         $rows = [];
 
@@ -133,21 +136,13 @@ class BiblioController extends Controller
     {
         $limit = 6;
 
-        $sql = "SELECT
-                b.biblio_id,
-                b.title,
-                b.image,
-                p.publisher_name AS publisher
-            FROM biblio b
-            LEFT JOIN mst_publisher p
-                ON b.publisher_id = p.publisher_id
-            ORDER BY b.last_update DESC
-            LIMIT {$limit}";
+        $sql = "SELECT biblio_id, title, image, publisher_id
+          FROM biblio
+          ORDER BY last_update DESC
+          LIMIT {$limit}";
 
         $query = $this->db->query($sql);
-
         $return = array();
-
         while ($data = $query->fetch_assoc()) {
             $data['image'] = $this->getImagePath($data['image']);
             $return[] = $data;
