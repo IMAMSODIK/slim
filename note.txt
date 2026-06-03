@@ -1,0 +1,112 @@
+end point
+koleksi buku
+koleksi terbaru
+master informasi
+
+bacaan untuk anda (mengambil dari data prodi)
+    -> tambahkan kolom prodi di member
+
+
+
+
+catatan:
+    untuk akses endpoint api => http://localhost:9090/slims/?p=api/biblio&page=1&limit=10
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+integrasi
+barcode member
+    1. tambah kolom barcode_id pada table member didatabse
+    2. dibawah baris 142, tambahkan kode
+            if (!empty($data['member_id'])) {
+                $barcodeDir = IMGBS . 'barcode/';
+
+                if (!is_dir($barcodeDir)) {
+                    mkdir($barcodeDir, 0755, true);
+                }
+
+                $barcodeFile = 'member_' . $data['member_id'] . '.png';
+                $generator = new \Picqer\Barcode\BarcodeGeneratorPNG();
+
+                file_put_contents(
+                    $barcodeDir . $barcodeFile,
+                    $generator->getBarcode(
+                        $data['member_id'],
+                        $generator::TYPE_CODE_128
+                    )
+                );
+                $data['barcode_id'] = $barcodeFile;
+            } 
+    3. pada baris 244 (setelah update berhasil), tambahkan kode berikut
+            $oldFile = IMGBS . 'barcode/member_' . $old_member_ID . '.png';
+            if (file_exists($oldFile)) {
+                unlink($oldFile);
+            }
+
+    4. setelah baris 377, tambahkan kode berikut untuk hapus barcode
+            $barcodeFile = IMGBS . 'barcode/member_' . $itemID . '.png';
+            if (file_exists($barcodeFile)) {
+                unlink($barcodeFile);
+            }
+
+    5. pada baris 725, tambahkan kode berikut untuk menampilkan barcode pada table
+            function showMemberIDWithBarcode($obj_db, $array_data)
+            {
+                $memberID = $array_data[0];
+
+                $barcodeUrl = '../images/barcode/member_' . $memberID . '.png';
+                $barcodePath = IMGBS . 'barcode/member_' . $memberID . '.png';
+
+                $html = '<div>';
+                $html .= '<strong>' . $memberID . '</strong>';
+
+                if (file_exists($barcodePath)) {
+                    $html .= '<br>';
+                    $html .= '<img src="' . $barcodeUrl . '?' . filemtime($barcodePath) . '"
+                            style="max-width:150px;max-height:40px;">';
+                }
+
+                $html .= '</div>';
+
+                return $html;
+            }
+
+        lalu data grid menjadi seperti ini
+        
+        $datagrid = new simbio_datagrid();
+        if ($can_read and $can_write) {
+            $datagrid->setSQLColumn(
+                'm.member_id',
+                'm.member_id AS \'' . __('Member ID') . '\'',
+                'm.member_name AS \'' . __('Member Name') . '\'',
+                'mt.member_type_name AS \'' . __('Membership Type') . '\'',
+                'm.member_email AS \'' . __('E-mail') . '\'',
+                'm.last_update AS \'' . __('Last Updated') . '\''
+            );
+            $datagrid->modifyColumnContent(1, 'callback{showMemberIDWithBarcode}');
+            $datagrid->modifyColumnContent(2, 'callback{showMemberImage}');
+        } else {
+            $datagrid->setSQLColumn(
+                'm.member_id AS \'' . __('Member ID') . '\'',
+                'm.member_name AS \'' . __('Member Name') . '\'',
+                'mt.member_type_name AS \'' . __('Membership Type') . '\'',
+                'm.member_email AS \'' . __('E-mail') . '\'',
+                'm.last_update AS \'' . __('Last Updated') . '\''
+            );
+            $datagrid->modifyColumnContent(0, 'callback{showMemberIDWithBarcode}');
+            $datagrid->modifyColumnContent(1, 'callback{showMemberImage}');
+        }
+        $datagrid->setSQLorder('member_name ASC');
