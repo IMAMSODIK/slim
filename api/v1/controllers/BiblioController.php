@@ -32,66 +32,80 @@ class BiblioController extends Controller
     }
 
     public function getAll()
-    {
-        global $dbs;
+{
+    global $dbs;
 
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
 
-        $page = max($page, 1);
-        $limit = max($limit, 1);
+    $page = max($page, 1);
+    $limit = max($limit, 1);
 
-        $offset = ($page - 1) * $limit;
+    $offset = ($page - 1) * $limit;
 
-        // total data
-        $totalQuery = $dbs->query("
+    // total data
+    $totalQuery = $dbs->query("
         SELECT COUNT(*) AS total
         FROM biblio
     ");
 
-        $total = $totalQuery->fetch_assoc()['total'];
+    $total = (int)$totalQuery->fetch_assoc()['total'];
+    $lastPage = (int)ceil($total / $limit);
 
-        // data
-        $query = $dbs->query("
-    SELECT
-        b.biblio_id,
-        b.title,
-        b.isbn_issn,
-        b.publish_year,
-        b.image,
-        b.call_number,
-        p.publisher_name AS publisher
-    FROM biblio b
-    LEFT JOIN mst_publisher p
-        ON b.publisher_id = p.publisher_id
-    ORDER BY b.biblio_id DESC
-    LIMIT {$limit}
-    OFFSET {$offset}
-");
-
-        $rows = [];
-
-        while ($row = $query->fetch_assoc()) {
-
-            $row['cover_url'] = !empty($row['image'])
-                ? SWB . 'images/docs/' . $row['image']
-                : null;
-
-            $rows[] = $row;
-        }
-
-        header('Content-Type: application/json');
-
+    // HARD STOP
+    if ($page > $lastPage) {
         echo json_encode([
             'success' => true,
             'page' => $page,
             'limit' => $limit,
-            'total' => (int)$total,
-            'last_page' => ceil($total / $limit),
-            'has_more' => ($offset + $limit) < $total,
-            'data' => $rows
+            'total' => $total,
+            'last_page' => $lastPage,
+            'has_more' => false,
+            'data' => []
         ]);
+        exit;
     }
+
+    // data
+    $query = $dbs->query("
+        SELECT
+            b.biblio_id,
+            b.title,
+            b.isbn_issn,
+            b.publish_year,
+            b.image,
+            b.call_number,
+            p.publisher_name AS publisher
+        FROM biblio b
+        LEFT JOIN mst_publisher p
+            ON b.publisher_id = p.publisher_id
+        ORDER BY b.biblio_id DESC
+        LIMIT {$limit}
+        OFFSET {$offset}
+    ");
+
+    $rows = [];
+
+    while ($row = $query->fetch_assoc()) {
+        $row['cover_url'] = !empty($row['image'])
+            ? SWB . 'images/docs/' . $row['image']
+            : null;
+
+        $rows[] = $row;
+    }
+
+    header('Content-Type: application/json');
+
+    echo json_encode([
+        'success' => true,
+        'page' => $page,
+        'limit' => $limit,
+        'total' => $total,
+        'last_page' => $lastPage,
+        'has_more' => $page < $lastPage,
+        'data' => $rows
+    ]);
+}
 
     public function getPopular()
     {
