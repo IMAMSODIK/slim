@@ -32,42 +32,72 @@ class BiblioController extends Controller
     }
 
     public function getAll()
-{
-    global $dbs;
+    {
+        global $dbs;
 
-    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+        header('Content-Type: application/json');
 
-    $page = max($page, 1);
-    $limit = max($limit, 1);
+        // ======================
+        // INPUT PARAMETER
+        // ======================
+        $page  = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-    $offset = ($page - 1) * $limit;
+        $page  = max($page, 1);
+        $limit = max($limit, 1);
 
-    // total data
-    $totalQuery = $dbs->query("
+        $offset = ($page - 1) * $limit;
+
+        // ======================
+        // WHERE BUILDER
+        // ======================
+        $where = "1=1";
+
+        if (!empty($search)) {
+            $search = mysqli_real_escape_string($dbs, $search);
+            $where .= " AND (
+            b.title LIKE '%$search%'
+            OR b.isbn_issn LIKE '%$search%'
+            OR b.publish_year LIKE '%$search%'
+        )";
+        }
+
+        // ======================
+        // TOTAL DATA (IMPORTANT)
+        // ======================
+        $totalQuery = $dbs->query("
         SELECT COUNT(*) AS total
-        FROM biblio
+        FROM biblio b
+        LEFT JOIN mst_publisher p
+            ON b.publisher_id = p.publisher_id
+        WHERE $where
     ");
 
-    $total = (int)$totalQuery->fetch_assoc()['total'];
-    $lastPage = (int)ceil($total / $limit);
+        $total = (int) $totalQuery->fetch_assoc()['total'];
 
-    // HARD STOP
-    if ($page > $lastPage) {
-        echo json_encode([
-            'success' => true,
-            'page' => $page,
-            'limit' => $limit,
-            'total' => $total,
-            'last_page' => $lastPage,
-            'has_more' => false,
-            'data' => []
-        ]);
-        exit;
-    }
+        $lastPage = ($limit > 0) ? (int) ceil($total / $limit) : 1;
 
-    // data
-    $query = $dbs->query("
+        // ======================
+        // HARD STOP SAFETY
+        // ======================
+        if ($page > $lastPage && $total > 0) {
+            echo json_encode([
+                'success' => true,
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'last_page' => $lastPage,
+                'has_more' => false,
+                'data' => []
+            ]);
+            exit;
+        }
+
+        // ======================
+        // DATA QUERY
+        // ======================
+        $query = $dbs->query("
         SELECT
             b.biblio_id,
             b.title,
@@ -79,33 +109,35 @@ class BiblioController extends Controller
         FROM biblio b
         LEFT JOIN mst_publisher p
             ON b.publisher_id = p.publisher_id
+        WHERE $where
         ORDER BY b.biblio_id DESC
         LIMIT {$limit}
         OFFSET {$offset}
     ");
 
-    $rows = [];
+        $rows = [];
 
-    while ($row = $query->fetch_assoc()) {
-        $row['cover_url'] = !empty($row['image'])
-            ? SWB . 'images/docs/' . $row['image']
-            : null;
+        while ($row = $query->fetch_assoc()) {
+            $row['cover_url'] = !empty($row['image'])
+                ? SWB . 'images/docs/' . $row['image']
+                : null;
 
-        $rows[] = $row;
+            $rows[] = $row;
+        }
+
+        // ======================
+        // RESPONSE
+        // ======================
+        echo json_encode([
+            'success' => true,
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $total,
+            'last_page' => $lastPage,
+            'has_more' => $page < $lastPage,
+            'data' => $rows
+        ]);
     }
-
-    header('Content-Type: application/json');
-
-    echo json_encode([
-        'success' => true,
-        'page' => $page,
-        'limit' => $limit,
-        'total' => $total,
-        'last_page' => $lastPage,
-        'has_more' => $page < $lastPage,
-        'data' => $rows
-    ]);
-}
 
     public function getPopular()
     {
