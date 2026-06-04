@@ -26,7 +26,7 @@ $router->setBasePath('api');
 $router->map('GET', '/', 'HomeController@index');
 $router->map('GET', '/biblio/popular', 'BiblioController@getPopular');
 $router->map('GET', '/biblio/latest', 'BiblioController@getLatest');
-$router->map('GET', '/mobile/biblio/latest', 'BiblioController@getLatest');
+$router->map('GET', '/mobile/biblio/latest', 'BiblioController@getLatestMobile');
 $router->map('GET', '/subject/popular', 'SubjectController@getPopular');
 $router->map('GET', '/subject/latest', 'SubjectController@getLatest');
 $router->map('GET', '/member/top', 'MemberController@getTopMember');
