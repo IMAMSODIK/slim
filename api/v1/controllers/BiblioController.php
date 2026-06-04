@@ -151,6 +151,52 @@ class BiblioController extends Controller
         parent::withJson($return);
     }
 
+    public function getLatestMobile()
+    {
+        global $dbs;
+
+        $limit = 6;
+
+        $query = $dbs->query("
+        SELECT
+            b.biblio_id,
+            b.title,
+            b.isbn_issn,
+            b.publish_year,
+            b.image,
+            b.call_number,
+            p.publisher_name AS publisher
+        FROM biblio b
+        LEFT JOIN mst_publisher p
+            ON b.publisher_id = p.publisher_id
+        ORDER BY b.last_update DESC
+        LIMIT {$limit}
+    ");
+
+        $rows = [];
+
+        while ($row = $query->fetch_assoc()) {
+
+            $row['cover_url'] = !empty($row['image'])
+                ? SWB . 'images/docs/' . $row['image']
+                : null;
+
+            $rows[] = $row;
+        }
+
+        header('Content-Type: application/json');
+
+        echo json_encode([
+            'success' => true,
+            'page' => 1,
+            'limit' => $limit,
+            'total' => count($rows),
+            'last_page' => 1,
+            'has_more' => false,
+            'data' => $rows
+        ]);
+    }
+
     public function getTotalAll()
     {
         $query = $this->db->query("SELECT COUNT(biblio_id) FROM biblio");
