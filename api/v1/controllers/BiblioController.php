@@ -32,72 +32,69 @@ class BiblioController extends Controller
     }
 
     public function getAll()
-    {
-        global $dbs;
+{
+    global $dbs;
 
-        header('Content-Type: application/json');
+    header('Content-Type: application/json');
 
-        // ======================
-        // INPUT PARAMETER
-        // ======================
-        $page  = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
-        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+    // ======================
+    // INPUT
+    // ======================
+    $page   = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $limit  = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-        $page  = max($page, 1);
-        $limit = max($limit, 1);
+    $page  = max($page, 1);
+    $limit = max($limit, 1);
+    $offset = ($page - 1) * $limit;
 
-        $offset = ($page - 1) * $limit;
+    // ======================
+    // SEARCH SAFE BUILD
+    // ======================
+    $where = "1=1";
 
-        // ======================
-        // WHERE BUILDER
-        // ======================
-        $where = "1=1";
+    if (!empty($search)) {
+        $search = mysqli_real_escape_string($dbs, $search);
 
-        if (!empty($search)) {
-            $search = mysqli_real_escape_string($dbs, $search);
-            $where .= " AND (
+        $where .= " AND (
             b.title LIKE '%$search%'
             OR b.isbn_issn LIKE '%$search%'
             OR b.publish_year LIKE '%$search%'
         )";
-        }
+    }
 
-        // ======================
-        // TOTAL DATA (IMPORTANT)
-        // ======================
-        $totalQuery = $dbs->query("
+    // ======================
+    // TOTAL (FIXED QUERY)
+    // ======================
+    $totalQuery = $dbs->query("
         SELECT COUNT(*) AS total
         FROM biblio b
-        LEFT JOIN mst_publisher p
-            ON b.publisher_id = p.publisher_id
         WHERE $where
     ");
 
-        $total = (int) $totalQuery->fetch_assoc()['total'];
+    $total = (int)$totalQuery->fetch_assoc()['total'];
+    $lastPage = ($limit > 0) ? (int)ceil($total / $limit) : 1;
 
-        $lastPage = ($limit > 0) ? (int) ceil($total / $limit) : 1;
+    // ======================
+    // HARD STOP
+    // ======================
+    if ($page > $lastPage && $total > 0) {
+        echo json_encode([
+            'success' => true,
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $total,
+            'last_page' => $lastPage,
+            'has_more' => false,
+            'data' => []
+        ]);
+        exit;
+    }
 
-        // ======================
-        // HARD STOP SAFETY
-        // ======================
-        if ($page > $lastPage && $total > 0) {
-            echo json_encode([
-                'success' => true,
-                'page' => $page,
-                'limit' => $limit,
-                'total' => $total,
-                'last_page' => $lastPage,
-                'has_more' => false,
-                'data' => []
-            ]);
-            exit;
-        }
-
-        // ======================
-        // DATA QUERY
-        // ======================
-        $query = $dbs->query("
+    // ======================
+    // DATA QUERY (FIXED JOIN POSITION)
+    // ======================
+    $query = $dbs->query("
         SELECT
             b.biblio_id,
             b.title,
@@ -111,33 +108,32 @@ class BiblioController extends Controller
             ON b.publisher_id = p.publisher_id
         WHERE $where
         ORDER BY b.biblio_id DESC
-        LIMIT {$limit}
-        OFFSET {$offset}
+        LIMIT $limit OFFSET $offset
     ");
 
-        $rows = [];
+    $rows = [];
 
-        while ($row = $query->fetch_assoc()) {
-            $row['cover_url'] = !empty($row['image'])
-                ? SWB . 'images/docs/' . $row['image']
-                : null;
+    while ($row = $query->fetch_assoc()) {
+        $row['cover_url'] = !empty($row['image'])
+            ? SWB . 'images/docs/' . $row['image']
+            : null;
 
-            $rows[] = $row;
-        }
-
-        // ======================
-        // RESPONSE
-        // ======================
-        echo json_encode([
-            'success' => true,
-            'page' => $page,
-            'limit' => $limit,
-            'total' => $total,
-            'last_page' => $lastPage,
-            'has_more' => $page < $lastPage,
-            'data' => $rows
-        ]);
+        $rows[] = $row;
     }
+
+    // ======================
+    // RESPONSE
+    // ======================
+    echo json_encode([
+        'success' => true,
+        'page' => $page,
+        'limit' => $limit,
+        'total' => $total,
+        'last_page' => $lastPage,
+        'has_more' => $page < $lastPage,
+        'data' => $rows
+    ]);
+}
 
     public function getPopular()
     {
