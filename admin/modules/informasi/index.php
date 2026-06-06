@@ -557,49 +557,41 @@ if (isset($_POST['detail']) OR (isset($_GET['action']) AND $_GET['action'] == 'd
 }
 
 // Helper functions for datagrid
-function showNewsImage($value, $row) {
-    echo '<pre>';
-    var_dump(func_get_args());
-    echo '</pre>';
-    die();
+function showNewsImage($dbs, $row, $col)
+{
+    $image_filename = $row[4] ?? '';
+
+    if (!empty($image_filename) &&
+        file_exists(IMGBS . 'docs/' . $image_filename)) {
+
+        return '<img src="' . SWB . 'images/docs/' .
+            rawurlencode($image_filename) .
+            '" style="max-width:60px;max-height:60px;" />';
+    }
+
+    return '<img src="' . SWB .
+        'images/default/image.png" style="max-width:60px;max-height:60px;" />';
 }
 
-function showStatusBadge($value, $row) {
-    // Similar safety check for $value
-    $status = '';
-    if (is_object($value)) {
-        if (is_array($row) && isset($row[3])) {
-            $status = $row[3];
-        } elseif (is_array($row) && isset($row['status'])) {
-            $status = $row['status'];
-        }
-    } else {
-        $status = $value;
-    }
-    
+function showStatusBadge($dbs, $row, $col)
+{
+    $status = $row[3] ?? '';
+
     if ($status == 'publish') {
-        return '<span class="badge badge-success">' . __('Published') . '</span>';
+        return '<span class="badge badge-success">Publish</span>';
     }
-    return '<span class="badge badge-warning">' . __('Draft') . '</span>';
+
+    return '<span class="badge badge-warning">Draft</span>';
 }
 
-function stripTagsAndTrim($value, $row) {
-    // Similar safety check for $value
-    $content = '';
-    if (is_object($value)) {
-        if (is_array($row) && isset($row[2])) {
-            $content = $row[2];
-        } elseif (is_array($row) && isset($row['isi'])) {
-            $content = $row['isi'];
-        }
-    } else {
-        $content = $value;
-    }
-    
-    $content = strip_tags($content);
+function stripTagsAndTrim($dbs, $row, $col)
+{
+    $content = strip_tags($row[2] ?? '');
+
     if (strlen($content) > 200) {
         $content = substr($content, 0, 200) . '...';
     }
+
     return $content;
 }
 /* main content end */
