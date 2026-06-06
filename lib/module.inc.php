@@ -1,4 +1,5 @@
 <?php
+
 /**
  * module class
  * Application modules related class
@@ -98,7 +99,10 @@ class module extends simbio
         }
 
         // sort modules
-        
+        echo '<pre>';
+        print_r(array_keys($_SESSION['priv']));
+        echo '</pre>';
+        die();
         if ($module_list) {
             foreach ($module_list as $_id => $_module) {
                 $_mod_dir = $_module['path'];
@@ -132,7 +136,7 @@ class module extends simbio
         $header_index = 0;
         foreach ($menu as $_list) {
             if ($_list[0] == 'Header') {
-                $_submenu .= '<div class="subMenuHeader subMenuHeader-'.$header_index.'">' . $_list[1] . '</div>';
+                $_submenu .= '<div class="subMenuHeader subMenuHeader-' . $header_index . '">' . $_list[1] . '</div>';
                 $header_index++;
             } else {
                 if ($i > 1) $_submenu_current = '';
@@ -179,7 +183,6 @@ class module extends simbio
             foreach ($menu as $index => $item)
                 if ($item[0] === 'Header' && (!isset($menu[$index + 1]) || (isset($menu[$index + 1]) && $menu[$index + 1][0] === 'Header')))
                     unset($menu[$index]);
-
         } else {
             include 'default/submenu.php';
             foreach ($this->get_shortcuts_menu($dbs) as $key => $value) {
@@ -207,5 +210,4 @@ class module extends simbio
         }
         return $shortcuts;
     }
-
 }
