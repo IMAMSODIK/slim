@@ -560,6 +560,7 @@ if (isset($_POST['detail']) OR (isset($_GET['action']) AND $_GET['action'] == 'd
 function showNewsImage($value, $row) {
     // The callback might be passing the column value and the entire record as array
     $image_filename = is_array($row) && isset($row['gambar']) ? $row['gambar'] : $value;
+    var_dump($image_filename);
     
     if (!empty($image_filename) && !is_object($image_filename) && file_exists(IMGBS . 'docs/' . $image_filename)) {
         return '<img src="' . SWB . 'lib/minigalnano/createthumb.php?filename=images/docs/' . urlencode($image_filename) . '&width=50" class="img-thumbnail" alt="News image">';
