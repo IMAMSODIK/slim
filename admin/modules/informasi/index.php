@@ -38,9 +38,9 @@ if (!defined('SB')) {
     require SB . 'admin/default/session.inc.php';
 }
 // IP based access limitation
-require LIB . 'ip_based_access.inc.php';
-do_checkIP('smc');
-do_checkIP('smc-informasi');
+// require LIB . 'ip_based_access.inc.php';
+// do_checkIP('smc');
+// do_checkIP('smc-informasi');
 
 require SB . 'admin/default/session_check.inc.php';
 require SIMBIO . 'simbio_GUI/table/simbio_table.inc.php';
