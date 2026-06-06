@@ -98,6 +98,7 @@ class module extends simbio
         }
 
         // sort modules
+        
         if ($module_list) {
             foreach ($module_list as $_id => $_module) {
                 $_mod_dir = $_module['path'];
