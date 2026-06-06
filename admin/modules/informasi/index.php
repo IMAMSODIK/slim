@@ -34,16 +34,13 @@ define('DB_ACCESS', 'fa');
 if (!defined('SB')) {
     // main system configuration
     require '../../../sysconfig.inc.php';
-    ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
     // start the session
     require SB . 'admin/default/session.inc.php';
 }
 // IP based access limitation
-// require LIB . 'ip_based_access.inc.php';
-// do_checkIP('smc');
-// do_checkIP('smc-informasi');
+require LIB . 'ip_based_access.inc.php';
+do_checkIP('smc');
+do_checkIP('smc-informasi');
 
 require SB . 'admin/default/session_check.inc.php';
 require SIMBIO . 'simbio_GUI/table/simbio_table.inc.php';
@@ -496,6 +493,7 @@ if (isset($_POST['detail']) OR (isset($_GET['action']) AND $_GET['action'] == 'd
         $datagrid->setSQLColumn('judul AS \'' . __('Title') . '\'',
             'LEFT(isi, 200) AS \'' . __('Content Preview') . '\'',
             'status AS \'' . __('Status') . '\'',
+            'gambar AS \'' . __('Image') . '\'',
             'created_at AS \'' . __('Created') . '\'',
             'updated_at AS \'' . __('Last Update') . '\'');
     }
@@ -505,7 +503,7 @@ if (isset($_POST['detail']) OR (isset($_GET['action']) AND $_GET['action'] == 'd
     // is there any search
     if (isset($_GET['keywords']) AND $_GET['keywords']) {
         $keywords = $dbs->escape_string(trim($_GET['keywords']));
-        if ($_GET['field'] != '0' AND in_array($_GET['field'], array('judul', 'isi'))) {
+        if (isset($_GET['field']) && $_GET['field'] != '0' && in_array($_GET['field'], array('judul', 'isi'))) {
             $field = $_GET['field'];
             $str_criteria .= " AND $field LIKE '%$keywords%'";
         } else {
@@ -527,25 +525,16 @@ if (isset($_POST['detail']) OR (isset($_GET['action']) AND $_GET['action'] == 'd
     $datagrid->chbox_form_URL = $_SERVER['PHP_SELF'];
     $datagrid->debug = true;
     
-    // modify image column to show thumbnail
+    // Register callback functions properly for datagrid
+    // The callback function receives parameters: $obj, $value, $row, $grid
     if ($can_read AND $can_write) {
-        $datagrid->modifyColumnContent(4, 'callback{showNewsImage}');
+        $datagrid->modifyColumnContent(4, 'callback{showNewsImageCallback}');
+        $datagrid->modifyColumnContent(3, 'callback{showStatusBadgeCallback}');
+        $datagrid->modifyColumnContent(2, 'callback{stripTagsAndTrimCallback}');
     } else {
-        $datagrid->modifyColumnContent(3, 'callback{showNewsImage}');
-    }
-    
-    // modify status column to show badge
-    if ($can_read AND $can_write) {
-        $datagrid->modifyColumnContent(3, 'callback{showStatusBadge}');
-    } else {
-        $datagrid->modifyColumnContent(2, 'callback{showStatusBadge}');
-    }
-    
-    // modify content preview
-    if ($can_read AND $can_write) {
-        $datagrid->modifyColumnContent(2, 'callback{stripTagsAndTrim}');
-    } else {
-        $datagrid->modifyColumnContent(1, 'callback{stripTagsAndTrim}');
+        $datagrid->modifyColumnContent(3, 'callback{showNewsImageCallback}');
+        $datagrid->modifyColumnContent(2, 'callback{showStatusBadgeCallback}');
+        $datagrid->modifyColumnContent(1, 'callback{stripTagsAndTrimCallback}');
     }
 
     // put the result into variables
@@ -559,22 +548,22 @@ if (isset($_POST['detail']) OR (isset($_GET['action']) AND $_GET['action'] == 'd
     echo $datagrid_result;
 }
 
-// Helper functions for datagrid
-function showNewsImage($value, $row) {
+// Helper callback functions for datagrid - these receive the datagrid object as first parameter
+function showNewsImageCallback($datagrid, $value, $row) {
     if (!empty($value) && file_exists(IMGBS . 'docs/' . $value)) {
         return '<img src="' . SWB . 'lib/minigalnano/createthumb.php?filename=images/docs/' . urlencode($value) . '&width=50" class="img-thumbnail" alt="News image">';
     }
     return '<img src="' . SWB . 'lib/minigalnano/createthumb.php?filename=images/default/image.png&width=50" class="img-thumbnail" alt="No image">';
 }
 
-function showStatusBadge($value, $row) {
+function showStatusBadgeCallback($datagrid, $value, $row) {
     if ($value == 'publish') {
         return '<span class="badge badge-success">' . __('Published') . '</span>';
     }
     return '<span class="badge badge-warning">' . __('Draft') . '</span>';
 }
 
-function stripTagsAndTrim($value, $row) {
+function stripTagsAndTrimCallback($datagrid, $value, $row) {
     $value = strip_tags($value);
     if (strlen($value) > 200) {
         $value = substr($value, 0, 200) . '...';
