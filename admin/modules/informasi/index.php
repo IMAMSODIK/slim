@@ -35,9 +35,9 @@ define('DB_ACCESS', 'fa');
 if (!defined('SB')) {
     // main system configuration
     require '../../../sysconfig.inc.php';
-    ini_set('display_errors', 1);
-    ini_set('display_startup_errors', 1);
-    error_reporting(E_ALL);
+    // ini_set('display_errors', 1);
+    // ini_set('display_startup_errors', 1);
+    // error_reporting(E_ALL);
     // start the session
     require SB . 'admin/default/session.inc.php';
 }
@@ -555,7 +555,7 @@ if (isset($_POST['detail']) or (isset($_GET['action']) and $_GET['action'] == 'd
 
     // modify image column to show thumbnail
     if ($can_read and $can_write) {
-        $datagrid->modifyColumnContent(4, 'callback{showNewsImage}');
+        // $datagrid->modifyColumnContent(4, 'callback{showNewsImage}');
     } else {
         $datagrid->modifyColumnContent(3, 'callback{showNewsImage}');
     }
