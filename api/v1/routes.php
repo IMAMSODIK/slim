@@ -17,6 +17,7 @@ require __DIR__ . '/controllers/MemberController.php';
 require __DIR__ . '/controllers/SubjectController.php';
 require __DIR__ . '/controllers/ItemController.php';
 require __DIR__ . '/controllers/LoanController.php';
+require __DIR__ . '/controllers/NewsController.php';
 
 /*----------  Create router object  ----------*/
 $router = new Router($sysconf, $dbs);
