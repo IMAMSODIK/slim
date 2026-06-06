@@ -146,7 +146,9 @@ class MemberController extends Controller
                     'member_id' => $member['member_id'],
                     'member_name' => $member['member_name'],
                     'member_email' => $member['member_email'],
-                    'member_image' => $member['member_image']
+                    'member_image' => $member['member_image'],
+                    'fakultas' => $member['fakultas'],
+                    'jurusan' => $member['jurusan'],
                 ]
             ]
         ]);
