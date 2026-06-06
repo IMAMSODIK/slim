@@ -153,6 +153,7 @@ class MemberController extends Controller
                     'address' => $member['member_address'],
                     'phone' => $member['member_phone'],
                     'expire_date' => $member['expire_date'],
+                    'barcode_id' => $member['barcode_id'],
                 ]
             ]
         ]);
