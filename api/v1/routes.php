@@ -48,6 +48,10 @@ $router->map('POST', '/auth/login', 'MemberController@login');
 $router->map('POST', '/auth/logout', 'MemberController@logout');
 $router->map('GET', '/auth/me', 'MemberController@me');
 
+/*----------  News  ----------*/
+$router->map('GET', '/news', 'NewsController@index');
+$router->map('GET', '/news/[i:id]', 'NewsController@detail');
+
 /*----------  Run matching route  ----------*/
 $router->run();
 
