@@ -559,55 +559,20 @@ if (!$in_pop_up) {
     <div class="menuBox">
         <div class="menuBoxInner biblioIcon">
             <div class="per_title">
-                <h2><?php echo __('Bibliographic'); ?></h2>
+                <h2><?php echo __('News'); ?></h2>
             </div>
             <div class="sub_section">
                 <div class="btn-group">
-                    <a href="<?php echo MWB; ?>bibliography/index.php"
-                       class="btn btn-default"><?php echo __('Bibliographic List'); ?></a>
-                    <a href="<?php echo MWB; ?>bibliography/index.php?action=detail"
-                       class="btn btn-default"><?php echo __('Add New Bibliography'); ?></a>
+                    <a href="<?php echo MWB; ?>informasi/index.php"
+                       class="btn btn-default"><?php echo __('News List'); ?></a>
+                    <a href="<?php echo MWB; ?>informasi/index.php?action=detail"
+                       class="btn btn-default"><?php echo __('Add News'); ?></a>
                 </div>
-                <form name="search" action="<?php echo MWB; ?>bibliography/index.php" id="search" method="get"
+                <form name="search" action="<?php echo MWB; ?>informasi/index.php" id="search" method="get"
                       class="form-inline"><?php echo __('Search'); ?>
                     <input type="text" name="keywords" id="keywords" class="form-control col-md-3"/>
-                    <select name="field" class="form-control col-md-2">
-                        <option value="0"><?php echo __('All Fields'); ?></option>
-                        <option value="title"><?php echo __('Title/Series Title'); ?> </option>
-                        <option value="subject"><?php echo __('Topics'); ?></option>
-                        <option value="author"><?php echo __('Authors'); ?></option>
-                        <option value="isbn"><?php echo __('ISBN/ISSN'); ?></option>
-                        <option value="publisher"><?php echo __('Publisher'); ?></option>
-                    </select>
                     <input type="submit" id="doSearch" value="<?php echo __('Search'); ?>"
                            class="s-btn btn btn-default"/>
-                    <div class="btn btn-info" data-toggle="collapse" data-target="#advancedFilter"
-                         aria-expanded="false"><?php echo __('Advanced Filter'); ?></div>
-                    <div class="collapse" id="advancedFilter"
-                         style="padding-top:10px;width:100%; text-align:left !important;">
-                        <?php echo __('Hide in OPAC'); ?>&nbsp;
-                        <select name="opac_hide" class="form-control col-md-2">
-                            <option value=""><?php echo __('ALL'); ?></option>
-                            <option value="0"><?php echo __('Show'); ?> </option>
-                            <option value="1"><?php echo __('Hide'); ?></option>
-                        </select>
-                        <?php echo __('Promote To Homepage'); ?>&nbsp;
-                        <select name="promoted" class="form-control col-md-2">
-                            <option value=""><?php echo __('ALL'); ?></option>
-                            <option value="0"><?php echo __('Don\'t Promote'); ?> </option>
-                            <option value="1"><?php echo __('Promote'); ?></option>
-                        </select>
-                    </div>
-                    <?php
-                    // enable UCS?
-                    if ($sysconf['ucs']['enable']) {
-                        ?>
-                        <a href="#"
-                           onclick="ucsUpload('<?php echo MWB; ?>bibliography/ucs_upload.php', serializeChbox('dataList'))"
-                           class="s-btn btn btn-default notAJAX"><?php echo __('Upload Selected Bibliographic data to Union Catalog Server*'); ?></a>
-                        <?php
-                    }
-                    ?>
                 </form>
             </div>
         </div>
