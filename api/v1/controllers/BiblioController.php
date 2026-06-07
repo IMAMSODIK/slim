@@ -366,23 +366,22 @@ class BiblioController extends Controller
 
     public function getDetail($id)
     {
-        die('ID = '.$id);
-        // $data = $this->getDetailModel($id);
+        $data = $this->getDetailModel($id);
 
-        // if (!$data) {
-        //     http_response_code(404);
+        if (!$data) {
+            http_response_code(404);
 
-        //     echo json_encode([
-        //         'success' => false,
-        //         'message' => 'Data tidak ditemukan'
-        //     ]);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Data tidak ditemukan'
+            ]);
 
-        //     return;
-        // }
+            return;
+        }
 
-        // echo json_encode([
-        //     'success' => true,
-        //     'data' => $data
-        // ]);
+        echo json_encode([
+            'success' => true,
+            'data' => $data
+        ]);
     }
 }
