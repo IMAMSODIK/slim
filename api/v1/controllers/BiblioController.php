@@ -32,69 +32,69 @@ class BiblioController extends Controller
     }
 
     public function getAll()
-{
-    global $dbs;
+    {
+        global $dbs;
 
-    header('Content-Type: application/json');
+        header('Content-Type: application/json');
 
-    // ======================
-    // INPUT
-    // ======================
-    $page   = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $limit  = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
-    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        // ======================
+        // INPUT
+        // ======================
+        $page   = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $limit  = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-    $page  = max($page, 1);
-    $limit = max($limit, 1);
-    $offset = ($page - 1) * $limit;
+        $page  = max($page, 1);
+        $limit = max($limit, 1);
+        $offset = ($page - 1) * $limit;
 
-    // ======================
-    // SEARCH SAFE BUILD
-    // ======================
-    $where = "1=1";
+        // ======================
+        // SEARCH SAFE BUILD
+        // ======================
+        $where = "1=1";
 
-    if (!empty($search)) {
-        $search = mysqli_real_escape_string($dbs, $search);
+        if (!empty($search)) {
+            $search = mysqli_real_escape_string($dbs, $search);
 
-        $where .= " AND (
+            $where .= " AND (
             b.title LIKE '%$search%'
             OR b.isbn_issn LIKE '%$search%'
             OR b.publish_year LIKE '%$search%'
         )";
-    }
+        }
 
-    // ======================
-    // TOTAL (FIXED QUERY)
-    // ======================
-    $totalQuery = $dbs->query("
+        // ======================
+        // TOTAL (FIXED QUERY)
+        // ======================
+        $totalQuery = $dbs->query("
         SELECT COUNT(*) AS total
         FROM biblio b
         WHERE $where
     ");
 
-    $total = (int)$totalQuery->fetch_assoc()['total'];
-    $lastPage = ($limit > 0) ? (int)ceil($total / $limit) : 1;
+        $total = (int)$totalQuery->fetch_assoc()['total'];
+        $lastPage = ($limit > 0) ? (int)ceil($total / $limit) : 1;
 
-    // ======================
-    // HARD STOP
-    // ======================
-    if ($page > $lastPage && $total > 0) {
-        echo json_encode([
-            'success' => true,
-            'page' => $page,
-            'limit' => $limit,
-            'total' => $total,
-            'last_page' => $lastPage,
-            'has_more' => false,
-            'data' => []
-        ]);
-        exit;
-    }
+        // ======================
+        // HARD STOP
+        // ======================
+        if ($page > $lastPage && $total > 0) {
+            echo json_encode([
+                'success' => true,
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'last_page' => $lastPage,
+                'has_more' => false,
+                'data' => []
+            ]);
+            exit;
+        }
 
-    // ======================
-    // DATA QUERY (FIXED JOIN POSITION)
-    // ======================
-    $query = $dbs->query("
+        // ======================
+        // DATA QUERY (FIXED JOIN POSITION)
+        // ======================
+        $query = $dbs->query("
         SELECT
             b.biblio_id,
             b.title,
@@ -111,29 +111,29 @@ class BiblioController extends Controller
         LIMIT $limit OFFSET $offset
     ");
 
-    $rows = [];
+        $rows = [];
 
-    while ($row = $query->fetch_assoc()) {
-        $row['cover_url'] = !empty($row['image'])
-            ? SWB . 'images/docs/' . $row['image']
-            : null;
+        while ($row = $query->fetch_assoc()) {
+            $row['cover_url'] = !empty($row['image'])
+                ? SWB . 'images/docs/' . $row['image']
+                : null;
 
-        $rows[] = $row;
+            $rows[] = $row;
+        }
+
+        // ======================
+        // RESPONSE
+        // ======================
+        echo json_encode([
+            'success' => true,
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $total,
+            'last_page' => $lastPage,
+            'has_more' => $page < $lastPage,
+            'data' => $rows
+        ]);
     }
-
-    // ======================
-    // RESPONSE
-    // ======================
-    echo json_encode([
-        'success' => true,
-        'page' => $page,
-        'limit' => $limit,
-        'total' => $total,
-        'last_page' => $lastPage,
-        'has_more' => $page < $lastPage,
-        'data' => $rows
-    ]);
-}
 
     public function getPopular()
     {
@@ -281,5 +281,107 @@ class BiblioController extends Controller
         }
 
         parent::withJson($return);
+    }
+
+    public function getDetailModel($id)
+    {
+        $sql = "
+        SELECT
+            b.biblio_id,
+            b.title,
+            b.sor,
+            b.edition,
+            b.isbn_issn,
+            b.publish_year,
+            b.collation,
+            b.series_title,
+            b.call_number,
+            b.classification,
+            b.notes,
+            b.image,
+            b.file_att,
+            b.labels,
+            b.spec_detail_info,
+            b.input_date,
+            b.last_update,
+
+            g.gmd_name,
+            g.icon_image,
+
+            p.publisher_name,
+
+            l.language_name,
+
+            pl.place_name,
+
+            f.frequency,
+
+            ct.content_type,
+
+            mt.media_type,
+
+            crt.carrier_type
+
+        FROM biblio b
+
+        LEFT JOIN mst_gmd g
+            ON b.gmd_id = g.gmd_id
+
+        LEFT JOIN mst_publisher p
+            ON b.publisher_id = p.publisher_id
+
+        LEFT JOIN mst_language l
+            ON b.language_id = l.language_id
+
+        LEFT JOIN mst_place pl
+            ON b.publish_place_id = pl.place_id
+
+        LEFT JOIN mst_frequency f
+            ON b.frequency_id = f.frequency_id
+
+        LEFT JOIN mst_content_type ct
+            ON b.content_type_id = ct.id
+
+        LEFT JOIN mst_media_type mt
+            ON b.media_type_id = mt.id
+
+        LEFT JOIN mst_carrier_type crt
+            ON b.carrier_type_id = crt.id
+
+        WHERE b.biblio_id = ?
+
+        LIMIT 1
+    ";
+
+        $stmt = $this->db->prepare($sql);
+
+        $stmt->bind_param('i', $id);
+
+        $stmt->execute();
+
+        return $stmt
+            ->get_result()
+            ->fetch_assoc();
+    }
+
+    public function getDetail($id)
+    {
+        $data = $this->getDetailModel($id);
+
+        if (!$data) {
+            http_response_code(404);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Data tidak ditemukan'
+            ]);
+
+            return;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => $data
+        ]);
     }
 }
