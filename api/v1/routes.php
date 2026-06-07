@@ -33,6 +33,7 @@ $router->map('GET', '/subject/latest', 'SubjectController@getLatest');
 $router->map('GET', '/member/top', 'MemberController@getTopMember');
 $router->map('GET', '/biblio/gmd/[*:gmd]', 'BiblioController@getByGmd');
 $router->map('GET', '/biblio/coll_type/[*:coll_type]', 'BiblioController@getByCollType');
+$router->map('GET', '/mobile/biblio/[i:id]', 'BiblioController@getDetail');
 $router->map('GET', '/mobile/biblio', 'BiblioController@getAll');
 
 /*----------  Admin  ----------*/
