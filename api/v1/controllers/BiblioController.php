@@ -384,42 +384,41 @@ class BiblioController extends Controller
             'data' => $data
         ]);
     }
-}
 
-public function getRecommendation()
-{
-    header('Content-Type: application/json');
+    public function getRecommendation()
+    {
+        header('Content-Type: application/json');
 
-    $member = $this->getAuthMember();
+        $member = $this->getAuthMember();
 
-    if (!$member) {
-        http_response_code(401);
+        if (!$member) {
+            http_response_code(401);
 
-        echo json_encode([
-            'success' => false,
-            'message' => 'Unauthorized'
-        ]);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ]);
 
-        return;
-    }
+            return;
+        }
 
-    $jurusan = trim($member['jurusan']);
+        $jurusan = trim($member['jurusan']);
 
-    if (!$jurusan) {
-        echo json_encode([
-            'success' => true,
-            'data' => []
-        ]);
+        if (!$jurusan) {
+            echo json_encode([
+                'success' => true,
+                'data' => []
+            ]);
 
-        return;
-    }
+            return;
+        }
 
-    $jurusanEscaped = mysqli_real_escape_string(
-        $this->db,
-        $jurusan
-    );
+        $jurusanEscaped = mysqli_real_escape_string(
+            $this->db,
+            $jurusan
+        );
 
-    $sql = "
+        $sql = "
         SELECT
             biblio_id,
             title,
@@ -439,17 +438,18 @@ public function getRecommendation()
         LIMIT 20
     ";
 
-    $query = $this->db->query($sql);
+        $query = $this->db->query($sql);
 
-    $rows = [];
+        $rows = [];
 
-    while ($row = $query->fetch_assoc()) {
-        $rows[] = $row;
+        while ($row = $query->fetch_assoc()) {
+            $rows[] = $row;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'jurusan' => $jurusan,
+            'data' => $rows
+        ]);
     }
-
-    echo json_encode([
-        'success' => true,
-        'jurusan' => $jurusan,
-        'data' => $rows
-    ]);
 }
