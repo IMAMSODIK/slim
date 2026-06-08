@@ -28,6 +28,7 @@ $router->map('GET', '/', 'HomeController@index');
 $router->map('GET', '/biblio/popular', 'BiblioController@getPopular');
 $router->map('GET', '/biblio/latest', 'BiblioController@getLatest');
 $router->map('GET', '/mobile/biblio/latest', 'BiblioController@getLatestMobile');
+$router->map('GET', '/mobile/biblio/recommendation', 'MemberController@getRecommendation');
 $router->map('GET', '/subject/popular', 'SubjectController@getPopular');
 $router->map('GET', '/subject/latest', 'SubjectController@getLatest');
 $router->map('GET', '/member/top', 'MemberController@getTopMember');
@@ -44,7 +45,6 @@ $router->map('GET', '/item/total/available', 'ItemController@getTotalAvailable')
 $router->map('GET', '/loan/summary', 'LoanController@getSummary');
 $router->map('GET', '/loan/getdate/[*:start_date]', 'LoanController@getDate');
 $router->map('GET', '/loan/summary/[*:date]', 'LoanController@getSummaryDate');
-$router->map('GET', '/mobile/biblio/recommendation', 'MemberController@getRecommendation');
 
 /*----------  Member  ----------*/
 $router->map('POST', '/auth/login', 'MemberController@login');
