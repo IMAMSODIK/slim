@@ -303,7 +303,7 @@ class MemberController extends Controller
             ON b.biblio_id = i.biblio_id
 
         WHERE
-            l.member_id = '$memberId'
+            l.member_id = '{$memberId}'
             AND l.is_return = 0
 
         ORDER BY l.loan_date DESC
@@ -311,25 +311,76 @@ class MemberController extends Controller
 
         $query = $this->db->query($sql);
 
+        if (!$query) {
+            http_response_code(500);
+
+            echo json_encode([
+                'success' => false,
+                'message' => $this->db->error
+            ]);
+
+            return;
+        }
+
+        $today = new DateTime();
+
         $data = [];
 
         while ($row = $query->fetch_assoc()) {
 
+            $loanDate = new DateTime(
+                $row['loan_date']
+            );
+
+            $dueDate = new DateTime(
+                $row['due_date']
+            );
+
+            /*
+         * Lama dipinjam
+         */
+            $lamaPinjam = $loanDate
+                ->diff($today)
+                ->days;
+
+            /*
+         * Sisa hari
+         * negatif jika lewat jatuh tempo
+         */
+            $sisaHari = (int)$today
+                ->diff($dueDate)
+                ->format('%r%a');
+
+            $status =
+                $sisaHari < 0
+                ? 'Terlambat'
+                : 'Aktif';
+
             $data[] = [
                 'loan_id' => (int)$row['loan_id'],
+
                 'title' => $row['title'],
+
                 'cover' => $this->getImagePath(
                     $row['image'],
                     'docs'
                 ),
+
                 'borrow_date' => $row['loan_date'],
+
                 'due_date' => $row['due_date'],
-                'status' => 'Dipinjam'
+
+                'lama_pinjam' => $lamaPinjam,
+
+                'sisa_hari' => $sisaHari,
+
+                'status' => $status
             ];
         }
 
         echo json_encode([
             'success' => true,
+            'total' => count($data),
             'data' => $data
         ]);
     }
