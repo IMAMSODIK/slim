@@ -331,8 +331,8 @@ class MemberController extends Controller
     //     ]);
     // }
 
-    public function getRecommended()
-    {
-        die('MASUK');
-    }
+    public function getRecommendation()
+{
+    die('MASUK');
+}
 }
