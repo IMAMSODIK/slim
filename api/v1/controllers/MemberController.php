@@ -263,81 +263,76 @@ class MemberController extends Controller
         return $query->fetch_assoc();
     }
 
-    // public function getLoans()
-    // {
-    //     header('Content-Type: application/json');
-
-    //     $member = $this->getAuthMember();
-
-    //     if (!$member) {
-    //         http_response_code(401);
-
-    //         echo json_encode([
-    //             'success' => false,
-    //             'message' => 'Unauthorized'
-    //         ]);
-
-    //         return;
-    //     }
-
-    //     $memberId = mysqli_real_escape_string(
-    //         $this->db,
-    //         $member['member_id']
-    //     );
-
-    //     $sql = "
-    //     SELECT
-    //         l.loan_id,
-    //         l.loan_date,
-    //         l.due_date,
-
-    //         b.title,
-    //         b.image
-
-    //     FROM loan l
-
-    //     INNER JOIN item i
-    //         ON i.item_code = l.item_code
-
-    //     INNER JOIN biblio b
-    //         ON b.biblio_id = i.biblio_id
-
-    //     WHERE
-    //         l.member_id = '$memberId'
-    //         AND l.is_return = 0
-
-    //     ORDER BY l.loan_date DESC
-    // ";
-
-    //     $query = $this->db->query($sql);
-
-    //     $data = [];
-
-    //     while ($row = $query->fetch_assoc()) {
-
-    //         $data[] = [
-    //             'loan_id' => (int)$row['loan_id'],
-    //             'title' => $row['title'],
-    //             'cover' => $this->getImagePath(
-    //                 $row['image'],
-    //                 'docs'
-    //             ),
-    //             'borrow_date' => $row['loan_date'],
-    //             'due_date' => $row['due_date'],
-    //             'status' => 'Dipinjam'
-    //         ];
-    //     }
-
-    //     echo json_encode([
-    //         'success' => true,
-    //         'data' => $data
-    //     ]);
-    // }
-
     public function getLoans()
-{
-    die('GET LOANS');
-}
+    {
+        header('Content-Type: application/json');
+
+        $member = $this->getAuthMember();
+
+        if (!$member) {
+            http_response_code(401);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ]);
+
+            return;
+        }
+
+        $memberId = mysqli_real_escape_string(
+            $this->db,
+            $member['member_id']
+        );
+
+        $sql = "
+        SELECT
+            l.loan_id,
+            l.loan_date,
+            l.due_date,
+
+            b.title,
+            b.image
+
+        FROM loan l
+
+        INNER JOIN item i
+            ON i.item_code = l.item_code
+
+        INNER JOIN biblio b
+            ON b.biblio_id = i.biblio_id
+
+        WHERE
+            l.member_id = '$memberId'
+            AND l.is_return = 0
+
+        ORDER BY l.loan_date DESC
+    ";
+
+        $query = $this->db->query($sql);
+
+        $data = [];
+
+        while ($row = $query->fetch_assoc()) {
+
+            $data[] = [
+                'loan_id' => (int)$row['loan_id'],
+                'title' => $row['title'],
+                'cover' => $this->getImagePath(
+                    $row['image'],
+                    'docs'
+                ),
+                'borrow_date' => $row['loan_date'],
+                'due_date' => $row['due_date'],
+                'status' => 'Dipinjam'
+            ];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
 
     public function getRecommendation()
     {
