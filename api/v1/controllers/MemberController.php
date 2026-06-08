@@ -262,4 +262,72 @@ class MemberController extends Controller
 
         return $query->fetch_assoc();
     }
+
+    public function getRecommendation()
+    {
+        header('Content-Type: application/json');
+
+        $member = $this->getAuthMember();
+
+        if (!$member) {
+            http_response_code(401);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ]);
+
+            return;
+        }
+
+        $jurusan = trim($member['jurusan']);
+
+        if (!$jurusan) {
+            echo json_encode([
+                'success' => true,
+                'data' => []
+            ]);
+
+            return;
+        }
+
+        $jurusanEscaped = mysqli_real_escape_string(
+            $this->db,
+            $jurusan
+        );
+
+        $sql = "
+        SELECT
+            biblio_id,
+            title,
+            image,
+            publish_year,
+            classification
+        FROM biblio
+        WHERE
+            opac_hide = 0
+            AND (
+                title LIKE '%{$jurusanEscaped}%'
+                OR notes LIKE '%{$jurusanEscaped}%'
+                OR labels LIKE '%{$jurusanEscaped}%'
+                OR classification LIKE '%{$jurusanEscaped}%'
+            )
+        ORDER BY input_date DESC
+        LIMIT 20
+    ";
+
+        $query = $this->db->query($sql);
+
+        $rows = [];
+
+        while ($row = $query->fetch_assoc()) {
+            $rows[] = $row;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'jurusan' => $jurusan,
+            'data' => $rows
+        ]);
+    }
 }

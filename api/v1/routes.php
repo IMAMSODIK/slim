@@ -44,6 +44,7 @@ $router->map('GET', '/item/total/available', 'ItemController@getTotalAvailable')
 $router->map('GET', '/loan/summary', 'LoanController@getSummary');
 $router->map('GET', '/loan/getdate/[*:start_date]', 'LoanController@getDate');
 $router->map('GET', '/loan/summary/[*:date]', 'LoanController@getSummaryDate');
+$router->map('GET', '/mobile/biblio/recommendation', 'MemberController@getRecommendation');
 
 /*----------  Member  ----------*/
 $router->map('POST', '/auth/login', 'MemberController@login');
