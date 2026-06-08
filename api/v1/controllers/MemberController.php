@@ -276,36 +276,37 @@ class MemberController extends Controller
                 'success' => false,
                 'message' => 'Unauthorized'
             ]);
-
             return;
         }
+
+        $type = $_GET['type'] ?? 'active';
 
         $memberId = mysqli_real_escape_string(
             $this->db,
             $member['member_id']
         );
 
+        /*
+     * BASE QUERY
+     */
+        $where = "l.member_id = '{$memberId}'";
+
+        if ($type === 'active') {
+            $where .= " AND l.is_return = 0";
+        }
+
         $sql = "
         SELECT
             l.loan_id,
             l.loan_date,
             l.due_date,
-
+            l.is_return,
             b.title,
             b.image
-
         FROM loan l
-
-        INNER JOIN item i
-            ON i.item_code = l.item_code
-
-        INNER JOIN biblio b
-            ON b.biblio_id = i.biblio_id
-
-        WHERE
-            l.member_id = '{$memberId}'
-            AND l.is_return = 0
-
+        INNER JOIN item i ON i.item_code = l.item_code
+        INNER JOIN biblio b ON b.biblio_id = i.biblio_id
+        WHERE {$where}
         ORDER BY l.loan_date DESC
     ";
 
@@ -318,68 +319,51 @@ class MemberController extends Controller
                 'success' => false,
                 'message' => $this->db->error
             ]);
-
             return;
         }
 
         $today = new DateTime();
-
         $data = [];
 
         while ($row = $query->fetch_assoc()) {
 
-            $loanDate = new DateTime(
-                $row['loan_date']
-            );
-
-            $dueDate = new DateTime(
-                $row['due_date']
-            );
+            $loanDate = new DateTime($row['loan_date']);
+            $dueDate  = new DateTime($row['due_date']);
 
             /*
-         * Lama dipinjam
+         * Lama pinjam
          */
-            $lamaPinjam = $loanDate
-                ->diff($today)
-                ->days;
+            $lamaPinjam = $loanDate->diff($today)->days;
 
             /*
-         * Sisa hari
-         * negatif jika lewat jatuh tempo
+         * Sisa hari (negatif = terlambat)
          */
-            $sisaHari = (int)$today
-                ->diff($dueDate)
-                ->format('%r%a');
+            $sisaHari = (int)$today->diff($dueDate)->format('%r%a');
 
-            $status =
-                $sisaHari < 0
-                ? 'Terlambat'
-                : 'Aktif';
+            /*
+         * STATUS LOGIC
+         */
+            if ((int)$row['is_return'] === 1) {
+                $status = 'Selesai';
+            } else {
+                $status = $sisaHari < 0 ? 'Terlambat' : 'Aktif';
+            }
 
             $data[] = [
                 'loan_id' => (int)$row['loan_id'],
-
                 'title' => $row['title'],
-
-                'cover' => $this->getImagePath(
-                    $row['image'],
-                    'docs'
-                ),
-
+                'cover' => $this->getImagePath($row['image'], 'docs'),
                 'borrow_date' => $row['loan_date'],
-
                 'due_date' => $row['due_date'],
-
                 'lama_pinjam' => $lamaPinjam,
-
                 'sisa_hari' => $sisaHari,
-
                 'status' => $status
             ];
         }
 
         echo json_encode([
             'success' => true,
+            'type' => $type,
             'total' => count($data),
             'data' => $data
         ]);
