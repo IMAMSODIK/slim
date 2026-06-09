@@ -56,13 +56,7 @@ $router->map('GET', '/mobile/member/loans', 'MemberController@getLoans');
 $router->map('GET', '/news', 'NewsController@index');
 $router->map('GET', '/news/[i:id]', 'NewsController@detail');
 
-<<<<<<< HEAD
 $router->map('POST', '/mobile/member/cart', 'MemberController@addToCart');
-=======
-$router->map('GET', '/mobile/biblio/[i:id]/reserve-status', 'MemberController@getReserveStatus');
-$router->map('POST', '/mobile/reserve', 'MemberController@reserveBook');
-$router->map('GET', '/mobile/member/reserves', 'MemberController@getReserves');
->>>>>>> 8c30a86aa04dea14d6b066a9b15e130ca1533608
 
 /*----------  Run matching route  ----------*/
 $router->run();
