@@ -50,12 +50,15 @@ $router->map('GET', '/loan/summary/[*:date]', 'LoanController@getSummaryDate');
 $router->map('POST', '/auth/login', 'MemberController@login');
 $router->map('POST', '/auth/logout', 'MemberController@logout');
 $router->map('GET', '/auth/me', 'MemberController@me');
-
 $router->map('GET', '/mobile/member/loans', 'MemberController@getLoans');
 
 /*----------  News  ----------*/
 $router->map('GET', '/news', 'NewsController@index');
 $router->map('GET', '/news/[i:id]', 'NewsController@detail');
+
+$router->map('GET', '/mobile/biblio/[i:id]/reserve-status', 'MemberController@getReserveStatus');
+$router->map('POST', '/mobile/reserve', 'MemberController@reserveBook');
+$router->map('GET', '/mobile/member/reserves', 'MemberController@getReserves');
 
 /*----------  Run matching route  ----------*/
 $router->run();

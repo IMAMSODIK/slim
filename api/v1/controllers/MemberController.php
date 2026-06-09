@@ -436,4 +436,320 @@ class MemberController extends Controller
             'data' => $rows
         ]);
     }
+
+    public function getReserveStatus($id)
+    {
+        header('Content-Type: application/json');
+
+        $member = $this->getAuthMember();
+
+        if (!$member) {
+            http_response_code(401);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ]);
+
+            return;
+        }
+
+        $memberId = mysqli_real_escape_string(
+            $this->db,
+            $member['member_id']
+        );
+
+        $biblioId = (int)$id;
+
+        /*
+     * MEMBER TYPE
+     */
+        $memberType = $this->db->query("
+        SELECT enable_reserve,reserve_limit
+        FROM mst_member_type
+        WHERE member_type_id=" . $member['member_type_id'] . "
+    ");
+
+        $memberTypeData = $memberType->fetch_assoc();
+
+        /*
+     * TOTAL RESERVE MEMBER
+     */
+        $reserveCount = $this->db->query("
+        SELECT COUNT(*) total
+        FROM reserve
+        WHERE member_id='$memberId'
+    ");
+
+        $reserveCountData = $reserveCount->fetch_assoc();
+
+        /*
+     * SUDAH RESERVE BUKU INI?
+     */
+        $alreadyReserve = $this->db->query("
+        SELECT reserve_id
+        FROM reserve
+        WHERE member_id='$memberId'
+        AND biblio_id='$biblioId'
+        LIMIT 1
+    ");
+
+        /*
+     * CEK ITEM YANG DIPINJAM
+     */
+        $loanedItems = $this->db->query("
+        SELECT
+            i.item_code
+        FROM item i
+        INNER JOIN loan l
+            ON l.item_code=i.item_code
+        WHERE i.biblio_id='$biblioId'
+        AND l.is_lent=1
+        AND l.is_return=0
+        AND l.member_id!='$memberId'
+    ");
+
+        $loanedCount = $loanedItems->num_rows;
+
+        /*
+     * ITEM TERSEDIA
+     */
+        $availableItems = $this->db->query("
+        SELECT i.item_code
+        FROM item i
+        WHERE i.biblio_id='$biblioId'
+        AND i.item_code NOT IN (
+            SELECT item_code
+            FROM loan
+            WHERE is_lent=1
+            AND is_return=0
+        )
+    ");
+
+        $availableCount = $availableItems->num_rows;
+
+        $canReserve = true;
+        $message = 'Buku dapat direservasi';
+
+        if (!$memberTypeData['enable_reserve']) {
+
+            $canReserve = false;
+            $message = 'Reservasi tidak diizinkan';
+        } elseif (
+            $reserveCountData['total']
+            >=
+            $memberTypeData['reserve_limit']
+        ) {
+
+            $canReserve = false;
+            $message = 'Batas reservasi tercapai';
+        } elseif ($alreadyReserve->num_rows > 0) {
+
+            $canReserve = false;
+            $message = 'Anda sudah melakukan reservasi';
+        } elseif ($availableCount > 0) {
+
+            $canReserve = false;
+            $message = 'Buku tersedia, silakan pinjam langsung';
+        } elseif ($loanedCount < 1) {
+
+            $canReserve = false;
+            $message = 'Tidak ada item yang bisa direservasi';
+        }
+
+        echo json_encode([
+            'success' => true,
+            'can_reserve' => $canReserve,
+            'message' => $message,
+            'available_items' => $availableCount,
+            'loaned_items' => $loanedCount,
+            'reserve_limit' => (int)$memberTypeData['reserve_limit'],
+            'current_reserve' => (int)$reserveCountData['total']
+        ]);
+    }
+
+    public function reserveBook()
+    {
+        header('Content-Type: application/json');
+
+        $member = $this->getAuthMember();
+
+        if (!$member) {
+
+            http_response_code(401);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ]);
+
+            return;
+        }
+
+        $body = json_decode(
+            file_get_contents('php://input'),
+            true
+        );
+
+        $biblioId = (int)($body['biblio_id'] ?? 0);
+
+        if (!$biblioId) {
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'biblio_id required'
+            ]);
+
+            return;
+        }
+
+        $memberId = mysqli_real_escape_string(
+            $this->db,
+            $member['member_id']
+        );
+
+        /*
+     * CARI ITEM YANG SEDANG DIPINJAM
+     */
+        $itemQuery = $this->db->query("
+        SELECT
+            i.item_code
+        FROM item i
+        INNER JOIN loan l
+            ON l.item_code=i.item_code
+        WHERE i.biblio_id='$biblioId'
+        AND l.is_lent=1
+        AND l.is_return=0
+        AND l.member_id!='$memberId'
+        LIMIT 1
+    ");
+
+        if ($itemQuery->num_rows < 1) {
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Tidak ada item yang dapat direservasi'
+            ]);
+
+            return;
+        }
+
+        $item = $itemQuery->fetch_assoc();
+
+        /*
+     * CEK DUPLIKAT
+     */
+        $exists = $this->db->query("
+        SELECT reserve_id
+        FROM reserve
+        WHERE member_id='$memberId'
+        AND biblio_id='$biblioId'
+        LIMIT 1
+    ");
+
+        if ($exists->num_rows > 0) {
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Sudah pernah reserve'
+            ]);
+
+            return;
+        }
+
+        $reserveDate = date('Y-m-d H:i:s');
+
+        $insert = $this->db->query("
+        INSERT INTO reserve(
+            member_id,
+            biblio_id,
+            item_code,
+            reserve_date
+        )
+        VALUES(
+            '$memberId',
+            '$biblioId',
+            '" . $item['item_code'] . "',
+            '$reserveDate'
+        )
+    ");
+
+        if (!$insert) {
+
+            http_response_code(500);
+
+            echo json_encode([
+                'success' => false,
+                'message' => $this->db->error
+            ]);
+
+            return;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Reservasi berhasil',
+            'item_code' => $item['item_code']
+        ]);
+    }
+
+    public function getReserves()
+    {
+        header('Content-Type: application/json');
+
+        $member = $this->getAuthMember();
+
+        if (!$member) {
+
+            http_response_code(401);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ]);
+
+            return;
+        }
+
+        $memberId = mysqli_real_escape_string(
+            $this->db,
+            $member['member_id']
+        );
+
+        $query = $this->db->query("
+        SELECT
+            r.reserve_id,
+            r.reserve_date,
+            r.item_code,
+            b.title,
+            b.image
+        FROM reserve r
+        INNER JOIN biblio b
+            ON b.biblio_id=r.biblio_id
+        WHERE r.member_id='$memberId'
+        ORDER BY r.reserve_date DESC
+    ");
+
+        $data = [];
+
+        while ($row = $query->fetch_assoc()) {
+
+            $data[] = [
+                'reserve_id' => (int)$row['reserve_id'],
+                'title' => $row['title'],
+                'cover' => $this->getImagePath(
+                    $row['image'],
+                    'docs'
+                ),
+                'item_code' => $row['item_code'],
+                'reserve_date' => $row['reserve_date']
+            ];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'total' => count($data),
+            'data' => $data
+        ]);
+    }
 }
