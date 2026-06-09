@@ -441,7 +441,7 @@ class MemberController extends Controller
     {
         header('Content-Type: application/json');
 
-        // 1. Verifikasi Auth Member
+        // 1. Ambil data member yang login
         $member = $this->getAuthMember();
         if (!$member) {
             http_response_code(401);
@@ -449,7 +449,7 @@ class MemberController extends Controller
             return;
         }
 
-        // 2. Ambil Input data biblio_id
+        // 2. Ambil input biblio_id dari aplikasi mobile
         $input = json_decode(file_get_contents('php://input'), true);
         $biblioId = isset($input['biblio_id']) ? (int)$input['biblio_id'] : 0;
 
@@ -461,102 +461,44 @@ class MemberController extends Controller
 
         $memberId = mysqli_real_escape_string($this->db, $member['member_id']);
 
-        // 3. VALIDASI SYARAT A: Status Keanggotaan (Expired / Pending)
-        // Mengecek apakah masa aktif member sudah habis
-        $todayStr = date('Y-m-d');
-        if (!empty($member['expire_date']) && $member['expire_date'] < $todayStr) {
-            http_response_code(403);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Gagal. Masa keanggotaan (Membership) Anda telah kedaluwarsa!'
-            ]);
+        // 3. CARI ITEM_CODE: SLiMS memerlukan item_code untuk melakukan reservasi
+        // Kita cari item yang tersedia (is_lent = 0) atau ambil salah satu item dari biblio_id tersebut
+        $sqlItem = "SELECT item_code FROM item WHERE biblio_id = {$biblioId} ORDER BY is_lent ASC LIMIT 1";
+        $queryItem = $this->db->query($sqlItem);
+        
+        if (!$queryItem || $queryItem->num_rows === 0) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Eksemplar/Item buku tidak ditemukan di database']);
             return;
         }
         
-        // Jika ada status pending/lock sirkulasi di data member
-        if (isset($member['is_pending']) && $member['is_pending'] == 1) {
-            http_response_code(403);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Gagal. Akun keanggotaan Anda sedang ditangguhkan (Pending State)!'
-            ]);
-            return;
-        }
+        $itemData = $queryItem->fetch_assoc();
+        $itemCode = mysqli_real_escape_string($this->db, $itemData['item_code']);
 
-        // 4. VALIDASI SYARAT B: Cek Pinjaman Terlambat (Overdue)
-        $sqlCheck = "SELECT due_date FROM loan WHERE member_id = '{$memberId}' AND is_return = 0";
-        $queryCheck = $this->db->query($sqlCheck);
-        $today = new \DateTime();
-
-        while ($row = $queryCheck->fetch_assoc()) {
-            $dueDate = new \DateTime($row['due_date']);
-            $sisaHari = (int)$today->diff($dueDate)->format('%r%a');
-
-            if ($sisaHari < 0) {
-                http_response_code(403); 
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Gagal memasukkan keranjang. Anda memiliki pinjaman buku yang terlambat dikembalikan!'
-                ]);
-                return;
-            }
-        }
-
-        // 5. VALIDASI SYARAT C: Cek Limit Maksimal Booking Keanggotaan (Sesuai Aturan SLiMS)
-        // Mengambil limit kuota booking berdasarkan tipe anggota (mst_member_type)
-        $memberTypeId = (int)$member['member_type_id'];
-        $reserveLimitQ = $this->db->query("SELECT reserve_limit FROM mst_member_type WHERE member_type_id = {$memberTypeId}");
-        $reserveLimit = 3; // default fallback jika tidak ketemu
-        if ($reserveLimitQ && $rowLimit = $reserveLimitQ->fetch_row()) {
-            $reserveLimit = (int)$rowLimit[0];
-        }
-
-        // Hitung total booking aktif user saat ini di database
-        $currentReserveQ = $this->db->query("SELECT COUNT(*) FROM booking WHERE member_id = '{$memberId}'");
-        $currentReserve = 0;
-        if ($currentReserveQ && $rowCurrent = $currentReserveQ->fetch_row()) {
-            $currentReserve = (int)$rowCurrent[0];
-        }
-
-        if ($currentReserve >= $reserveLimit) {
-            http_response_code(403);
-            echo json_encode([
-                'success' => false,
-                'message' => "Gagal. Batas maksimal keranjang/booking Anda ({$reserveLimit} buku) telah tercapai."
-            ]);
-            return;
-        }
-
-        // 6. VALIDASI SYARAT D: Proteksi Duplikasi Item di Dalam Keranjang
-        $sqlDuplicateCheck = "SELECT booking_id FROM booking WHERE member_id = '{$memberId}' AND biblio_id = {$biblioId} LIMIT 1";
-        $queryDuplicate = $this->db->query($sqlDuplicateCheck);
+        // 4. VALIDASI: Cek apakah item ini sudah pernah di-reserve oleh member ini
+        $sqlDuplicate = "SELECT reserve_id FROM reserve WHERE member_id = '{$memberId}' AND item_code = '{$itemCode}' LIMIT 1";
+        $queryDuplicate = $this->db->query($sqlDuplicate);
         if ($queryDuplicate && $queryDuplicate->num_rows > 0) {
             http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Buku ini sudah ada di dalam keranjang belanja Anda.'
-            ]);
+            echo json_encode(['success' => false, 'message' => 'Buku ini sudah ada di dalam antrean keranjang Anda']);
             return;
         }
 
-        // 7. EKSEKUSI PENYIMPANAN KE TABEL BOOKING BAWAAN SLiMS
-        $bookingDate = $today->format('Y-m-d H:i:s');
-        // Expired booking otomatis diset 3 hari kedepan semenjak klik dilakukan
-        $expiredDate = $today->modify('+3 days')->format('Y-m-d H:i:s'); 
-
-        $sqlInsert = "INSERT INTO booking (member_id, biblio_id, booking_date, expired_date) 
-                      VALUES ('{$memberId}', {$biblioId}, '{$bookingDate}', '{$expiredDate}')";
+        // 5. EKSEKUSI: Masukkan data ke tabel 'reserve' asli milik SLiMS
+        $reserveDate = date('Y-m-d H:i:s');
+        $sqlInsert = "INSERT INTO reserve (member_id, biblio_id, item_code, reserve_date) 
+                      VALUES ('{$memberId}', {$biblioId}, '{$itemCode}', '{$reserveDate}')";
 
         if ($this->db->query($sqlInsert)) {
             echo json_encode([
                 'success' => true,
-                'message' => 'Buku berhasil dimasukkan ke keranjang!'
+                'message' => 'Buku berhasil dimasukkan ke keranjang (Reservasi SLiMS)'
             ]);
         } else {
             http_response_code(500);
             echo json_encode([
                 'success' => false, 
-                'message' => 'Gagal menyimpan data sirkulasi: ' . $this->db->error
+                'message' => 'Gagal menyimpan ke tabel reserve: ' . $this->db->error
             ]);
         }
     }
