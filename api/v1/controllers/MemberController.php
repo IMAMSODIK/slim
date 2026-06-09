@@ -322,13 +322,15 @@ class MemberController extends Controller
             return;
         }
 
-        $today = new DateTime();
+        // PERBAIKAN: Menambahkan backslash \ pada DateTime global php
+        $today = new \DateTime();
         $data = [];
 
         while ($row = $query->fetch_assoc()) {
 
-            $loanDate = new DateTime($row['loan_date']);
-            $dueDate  = new DateTime($row['due_date']);
+            // PERBAIKAN: Menambahkan backslash \ pada DateTime global php
+            $loanDate = new \DateTime($row['loan_date']);
+            $dueDate  = new \DateTime($row['due_date']);
 
             /*
          * Lama pinjam
@@ -437,74 +439,70 @@ class MemberController extends Controller
         ]);
     }
 
-    // public function addToCart()
-    // {
-    //     header('Content-Type: application/json');
+    public function addToCart()
+    {
+        header('Content-Type: application/json');
 
-    //     $member = $this->getAuthMember();
-    //     if (!$member) {
-    //         http_response_code(401);
-    //         echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-    //         return;
-    //     }
+        $member = $this->getAuthMember();
+        if (!$member) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            return;
+        }
 
-    //     // Ambil data input biblio_id
-    //     $input = json_decode(file_get_contents('php://input'), true);
-    //     $biblioId = isset($input['biblio_id']) ? (int)$input['biblio_id'] : 0;
+        // Ambil data input biblio_id
+        $input = json_decode(file_get_contents('php://input'), true);
+        $biblioId = isset($input['biblio_id']) ? (int)$input['biblio_id'] : 0;
 
-    //     if ($biblioId <= 0) {
-    //         http_response_code(400);
-    //         echo json_encode(['success' => false, 'message' => 'ID Buku tidak valid']);
-    //         return;
-    //     }
+        if ($biblioId <= 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'ID Buku tidak valid']);
+            return;
+        }
 
-    //     $memberId = mysqli_real_escape_string($this->db, $member['member_id']);
+        $memberId = mysqli_real_escape_string($this->db, $member['member_id']);
 
-    //     /*
-    //  * VALIDASI SYARAT: Cek apakah ada pinjaman yang TERLAMBAT
-    //  */
-    //     $sqlCheck = "
-    //     SELECT l.due_date 
-    //     FROM loan l 
-    //     WHERE l.member_id = '{$memberId}' AND l.is_return = 0
-    // ";
-    //     $queryCheck = $this->db->query($sqlCheck);
-    //     $today = new DateTime();
+        /*
+         * VALIDASI SYARAT: Cek apakah ada pinjaman yang TERLAMBAT
+         */
+        $sqlCheck = "
+            SELECT l.due_date 
+            FROM loan l 
+            WHERE l.member_id = '{$memberId}' AND l.is_return = 0
+        ";
+        $queryCheck = $this->db->query($sqlCheck);
+        
+        // PERBAIKAN: Menambahkan backslash \ pada DateTime global php
+        $today = new \DateTime();
 
-    //     while ($row = $queryCheck->fetch_assoc()) {
-    //         $dueDate = new DateTime($row['due_date']);
-    //         $sisaHari = (int)$today->diff($dueDate)->format('%r%a');
+        while ($row = $queryCheck->fetch_assoc()) {
+            // PERBAIKAN: Menambahkan backslash \ pada DateTime global php
+            $dueDate = new \DateTime($row['due_date']);
+            $sisaHari = (int)$today->diff($dueDate)->format('%r%a');
 
-    //         if ($sisaHari < 0) {
-    //             http_response_code(403); // Forbidden
-    //             echo json_encode([
-    //                 'success' => false,
-    //                 'message' => 'Gagal memasukkan keranjang. Anda memiliki pinjaman buku yang terlambat dikembalikan!'
-    //             ]);
-    //             return;
-    //         }
-    //     }
+            if ($sisaHari < 0) {
+                http_response_code(403); // Forbidden
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Gagal memasukkan keranjang. Anda memiliki pinjaman buku yang terlambat dikembalikan!'
+                ]);
+                return;
+            }
+        }
 
-    //     /*
-    //  * PROSES MASUKKAN KERANJANG
-    //  * Silakan sesuaikan logic query di bawah ini dengan table keranjang (misal: `cart`) di database Anda.
-    //  */
-    //     // Contoh jika menggunakan tabel bernama 'cart':
-    //     $sqlInsert = "INSERT INTO cart (member_id, biblio_id, created_at) VALUES ('{$memberId}', {$biblioId}, NOW())";
-    //     // Catatan: Jika buku sudah ada di keranjang, bisa disesuaikan agar tidak double (Optional)
+        /*
+         * PROSES MASUKKAN KERANJANG
+         */
+        $sqlInsert = "INSERT INTO cart (member_id, biblio_id, created_at) VALUES ('{$memberId}', {$biblioId}, NOW())";
 
-    //     if ($this->db->query($sqlInsert)) {
-    //         echo json_encode([
-    //             'success' => true,
-    //             'message' => 'Buku berhasil dimasukkan ke keranjang'
-    //         ]);
-    //     } else {
-    //         http_response_code(500);
-    //         echo json_encode(['success' => false, 'message' => 'Gagal menyimpan ke keranjang: ' . $this->db->error]);
-    //     }
-    // }
-
-    public function addToCart(){
-        die('berhasil');
+        if ($this->db->query($sqlInsert)) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Buku berhasil dimasukkan ke keranjang'
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan ke keranjang: ' . $this->db->error]);
+        }
     }
 }
