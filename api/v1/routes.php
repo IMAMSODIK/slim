@@ -57,7 +57,10 @@ $router->map('GET', '/news', 'NewsController@index');
 $router->map('GET', '/news/[i:id]', 'NewsController@detail');
 
 $router->map('POST', '/mobile/member/cart', 'MemberController@addToCart');
-
+$router->map('POST', '/api/mobile/cart', 'MemberController@addToCart');
+$router->map('GET', '/api/mobile/cart', 'MemberController@getCart');
+$router->map('DELETE', '/api/mobile/cart', 'MemberController@removeCart');
+$router->map('POST', '/api/mobile/cart/checkout', 'MemberController@checkoutCart');
 /*----------  Run matching route  ----------*/
 $router->run();
 

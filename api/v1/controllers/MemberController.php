@@ -441,65 +441,244 @@ class MemberController extends Controller
     {
         header('Content-Type: application/json');
 
-        // 1. Ambil data member yang login
         $member = $this->getAuthMember();
+
         if (!$member) {
             http_response_code(401);
-            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ]);
+
             return;
         }
 
-        // 2. Ambil input biblio_id dari aplikasi mobile
-        $input = json_decode(file_get_contents('php://input'), true);
-        $biblioId = isset($input['biblio_id']) ? (int)$input['biblio_id'] : 0;
+        $body = json_decode(
+            file_get_contents('php://input'),
+            true
+        );
 
-        if ($biblioId <= 0) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'ID Buku tidak valid']);
+        $biblioId = (int)($body['biblio_id'] ?? 0);
+
+        if (!$biblioId) {
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'biblio_id required'
+            ]);
+
             return;
         }
 
-        $memberId = mysqli_real_escape_string($this->db, $member['member_id']);
-
-        // 3. CARI ITEM_CODE: SLiMS memerlukan item_code untuk melakukan reservasi
-        // Kita cari item yang tersedia (is_lent = 0) atau ambil salah satu item dari biblio_id tersebut
-        $sqlItem = "SELECT item_code FROM item WHERE biblio_id = {$biblioId} ORDER BY is_lent ASC LIMIT 1";
-        $queryItem = $this->db->query($sqlItem);
-        
-        if (!$queryItem || $queryItem->num_rows === 0) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Eksemplar/Item buku tidak ditemukan di database']);
-            return;
+        if (!isset($_SESSION['mobile_cart'])) {
+            $_SESSION['mobile_cart'] = [];
         }
-        
-        $itemData = $queryItem->fetch_assoc();
-        $itemCode = mysqli_real_escape_string($this->db, $itemData['item_code']);
 
-        // 4. VALIDASI: Cek apakah item ini sudah pernah di-reserve oleh member ini
-        $sqlDuplicate = "SELECT reserve_id FROM reserve WHERE member_id = '{$memberId}' AND item_code = '{$itemCode}' LIMIT 1";
-        $queryDuplicate = $this->db->query($sqlDuplicate);
-        if ($queryDuplicate && $queryDuplicate->num_rows > 0) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Buku ini sudah ada di dalam antrean keranjang Anda']);
+        if (in_array($biblioId, $_SESSION['mobile_cart'])) {
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Buku sudah ada di keranjang'
+            ]);
+
             return;
         }
 
-        // 5. EKSEKUSI: Masukkan data ke tabel 'reserve' asli milik SLiMS
-        $reserveDate = date('Y-m-d H:i:s');
-        $sqlInsert = "INSERT INTO reserve (member_id, biblio_id, item_code, reserve_date) 
-                      VALUES ('{$memberId}', {$biblioId}, '{$itemCode}', '{$reserveDate}')";
+        $_SESSION['mobile_cart'][] = $biblioId;
 
-        if ($this->db->query($sqlInsert)) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'Buku ditambahkan ke keranjang'
+        ]);
+    }
+
+    public function getCart()
+    {
+        ini_set('display_errors', 1);
+    error_reporting(E_ALL);
+        header('Content-Type: application/json');
+
+        if (!isset($_SESSION['mobile_cart'])) {
+
             echo json_encode([
                 'success' => true,
-                'message' => 'Buku berhasil dimasukkan ke keranjang (Reservasi SLiMS)'
+                'total' => 0,
+                'data' => []
             ]);
-        } else {
-            http_response_code(500);
-            echo json_encode([
-                'success' => false, 
-                'message' => 'Gagal menyimpan ke tabel reserve: ' . $this->db->error
-            ]);
+
+            return;
         }
+
+        $ids = $_SESSION['mobile_cart'];
+
+        if (empty($ids)) {
+
+            echo json_encode([
+                'success' => true,
+                'total' => 0,
+                'data' => []
+            ]);
+
+            return;
+        }
+
+        $idString = implode(',', array_map('intval', $ids));
+
+        $query = $this->db->query("
+        SELECT
+            biblio_id,
+            title,
+            image
+        FROM biblio
+        WHERE biblio_id IN ($idString)
+    ");
+
+        $data = [];
+
+        while ($row = $query->fetch_assoc()) {
+
+            $data[] = [
+                'biblio_id' => (int)$row['biblio_id'],
+                'title' => $row['title'],
+                'cover' => $this->getImagePath(
+                    $row['image'],
+                    'docs'
+                )
+            ];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'total' => count($data),
+            'data' => $data
+        ]);
+    }
+
+    public function removeCart()
+    {
+        header('Content-Type: application/json');
+
+        $body = json_decode(
+            file_get_contents('php://input'),
+            true
+        );
+
+        $biblioId = (int)($body['biblio_id'] ?? 0);
+
+        if (
+            isset($_SESSION['mobile_cart'])
+        ) {
+
+            $_SESSION['mobile_cart'] =
+                array_values(
+                    array_filter(
+                        $_SESSION['mobile_cart'],
+                        fn($id) => $id != $biblioId
+                    )
+                );
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Buku dihapus dari keranjang'
+        ]);
+    }
+
+    public function checkoutCart()
+    {
+        header('Content-Type: application/json');
+
+        $member = $this->getAuthMember();
+
+        if (!$member) {
+
+            http_response_code(401);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ]);
+
+            return;
+        }
+
+        $memberId = mysqli_real_escape_string(
+            $this->db,
+            $member['member_id']
+        );
+
+        if (
+            empty($_SESSION['mobile_cart'])
+        ) {
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Keranjang kosong'
+            ]);
+
+            return;
+        }
+
+        $success = 0;
+
+        foreach ($_SESSION['mobile_cart'] as $biblioId) {
+
+            $itemQuery = $this->db->query("
+            SELECT
+                i.item_code
+            FROM item i
+            INNER JOIN loan l
+                ON l.item_code=i.item_code
+            WHERE i.biblio_id='$biblioId'
+            AND l.is_lent=1
+            AND l.is_return=0
+            LIMIT 1
+        ");
+
+            if ($itemQuery->num_rows < 1) {
+                continue;
+            }
+
+            $item = $itemQuery->fetch_assoc();
+
+            $exists = $this->db->query("
+            SELECT reserve_id
+            FROM reserve
+            WHERE member_id='$memberId'
+            AND biblio_id='$biblioId'
+            LIMIT 1
+        ");
+
+            if ($exists->num_rows > 0) {
+                continue;
+            }
+
+            $reserveDate = date('Y-m-d H:i:s');
+
+            $this->db->query("
+            INSERT INTO reserve(
+                member_id,
+                biblio_id,
+                item_code,
+                reserve_date
+            )
+            VALUES(
+                '$memberId',
+                '$biblioId',
+                '" . $item['item_code'] . "',
+                '$reserveDate'
+            )
+        ");
+
+            $success++;
+        }
+
+        $_SESSION['mobile_cart'] = [];
+
+        echo json_encode([
+            'success' => true,
+            'message' => "$success buku berhasil direservasi"
+        ]);
     }
 }
