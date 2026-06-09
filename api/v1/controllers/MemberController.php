@@ -436,4 +436,71 @@ class MemberController extends Controller
             'data' => $rows
         ]);
     }
+
+    public function addToCart()
+    {
+        header('Content-Type: application/json');
+
+        $member = $this->getAuthMember();
+        if (!$member) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            return;
+        }
+
+        // Ambil data input biblio_id
+        $input = json_decode(file_get_contents('php://input'), true);
+        $biblioId = isset($input['biblio_id']) ? (int)$input['biblio_id'] : 0;
+
+        if ($biblioId <= 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'ID Buku tidak valid']);
+            return;
+        }
+
+        $memberId = mysqli_real_escape_string($this->db, $member['member_id']);
+
+        /*
+     * VALIDASI SYARAT: Cek apakah ada pinjaman yang TERLAMBAT
+     */
+        $sqlCheck = "
+        SELECT l.due_date 
+        FROM loan l 
+        WHERE l.member_id = '{$memberId}' AND l.is_return = 0
+    ";
+        $queryCheck = $this->db->query($sqlCheck);
+        $today = new DateTime();
+
+        while ($row = $queryCheck->fetch_assoc()) {
+            $dueDate = new DateTime($row['due_date']);
+            $sisaHari = (int)$today->diff($dueDate)->format('%r%a');
+
+            if ($sisaHari < 0) {
+                http_response_code(403); // Forbidden
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Gagal memasukkan keranjang. Anda memiliki pinjaman buku yang terlambat dikembalikan!'
+                ]);
+                return;
+            }
+        }
+
+        /*
+     * PROSES MASUKKAN KERANJANG
+     * Silakan sesuaikan logic query di bawah ini dengan table keranjang (misal: `cart`) di database Anda.
+     */
+        // Contoh jika menggunakan tabel bernama 'cart':
+        $sqlInsert = "INSERT INTO cart (member_id, biblio_id, created_at) VALUES ('{$memberId}', {$biblioId}, NOW())";
+        // Catatan: Jika buku sudah ada di keranjang, bisa disesuaikan agar tidak double (Optional)
+
+        if ($this->db->query($sqlInsert)) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Buku berhasil dimasukkan ke keranjang'
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan ke keranjang: ' . $this->db->error]);
+        }
+    }
 }

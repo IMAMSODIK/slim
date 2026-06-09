@@ -57,6 +57,8 @@ $router->map('GET', '/mobile/member/loans', 'MemberController@getLoans');
 $router->map('GET', '/news', 'NewsController@index');
 $router->map('GET', '/news/[i:id]', 'NewsController@detail');
 
+$router->map('POST', '/mobile/member/cart', 'MemberController@addToCart');
+
 /*----------  Run matching route  ----------*/
 $router->run();
 
